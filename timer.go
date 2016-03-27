@@ -28,7 +28,7 @@ func ResetMask(mask int, stop ...bool) {
 	}
 }
 
-func ResetPrecisionAndMask(precision time.Duration, mask int,stop ...bool) {
+func ResetPrecisionAndMask(precision time.Duration, mask int, stop ...bool) {
 	GlobalPrecision = precision
 	GlobalBaseMask = mask
 	oldxtimer := globalxtimer

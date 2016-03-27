@@ -15,11 +15,10 @@ type TaskNode struct {
 
 type TaskList struct {
 	sync.Mutex
-	Elems     []*list.List
-	ElenIndex int
-	c         chan struct{}
-	cmap      map[time.Duration]chan struct{}
-	cmapLock  sync.Mutex
+	Elems    *list.List
+	c        chan struct{}
+	cmap     map[time.Duration]chan struct{}
+	cmapLock sync.Mutex
 }
 
 func (ml *TaskList) AddChan(d time.Duration) (c chan struct{}, f func()) {
@@ -45,12 +44,11 @@ func (ml *TaskList) AddChan(d time.Duration) (c chan struct{}, f func()) {
 
 func (ml *TaskList) AddTask(d time.Duration, f func()) {
 	ml.Lock()
-	if len(ml.Elems) == 0 || ml.Elems[ml.ElenIndex-1].Len() > 1000 {
-		ml.Elems = append(ml.Elems, list.New())
-		ml.ElenIndex++
+	if ml.Elems == nil {
+		ml.Elems = list.New()
 	}
 
-	ml.Elems[ml.ElenIndex-1].PushBack(TaskNode{activeTime: d, task: f})
+	ml.Elems.PushBack(TaskNode{activeTime: d, task: f})
 	ml.Unlock()
 }
 
@@ -173,14 +171,13 @@ func (tw *TimeWheel) onTimer(i int) {
 
 	ml := &tw.tasks[i][curIndex]
 
-	var elems []*list.List
+	var elems *list.List
 	var c chan struct{} = nil
 	ml.Lock()
 	c = ml.c
 	ml.c = nil
 	elems = ml.Elems
 	ml.Elems = nil
-	ml.ElenIndex = 0
 	ml.Unlock()
 	if c != nil {
 		close(c)
@@ -188,23 +185,19 @@ func (tw *TimeWheel) onTimer(i int) {
 	if elems == nil {
 		return
 	}
-	go func(elems []*list.List, tw *TimeWheel, i int) {
-		for _, v := range elems {
-			go func(elems *list.List, tw *TimeWheel, i int) {
-				e := elems.Front()
-				if e != nil {
-					for ; e != nil; e = e.Next() {
-						tn := e.Value.(TaskNode)
-						nextTime := tn.activeTime % tw.precisions[i]
-						if nextTime == 0 ||
-							i == 0 {
-							tn.task()
-						} else {
-							tw.AfterFunc(nextTime, tn.task)
-						}
-					}
+	go func(elems *list.List, tw *TimeWheel, i int) {
+		e := elems.Front()
+		if e != nil {
+			for ; e != nil; e = e.Next() {
+				tn := e.Value.(TaskNode)
+				nextTime := tn.activeTime % tw.precisions[i]
+				if nextTime == 0 ||
+					i == 0 {
+					go tn.task()
+				} else {
+					tw.AfterFunc(nextTime, tn.task)
 				}
-			}(v, tw, i)
+			}
 		}
 	}(elems, tw, i)
 }
@@ -217,7 +210,7 @@ func (this *TimeWheel) start() {
 			case <-tw.ticker.C:
 				for i := 0; i < this.bucket_cnt; i++ {
 					if tw.UpdateOffset(i) == 0 {
-						tw.onTimer(i)
+						go tw.onTimer(i)
 					}
 				}
 			}

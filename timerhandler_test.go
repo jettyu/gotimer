@@ -54,4 +54,3 @@ func Benchmark_TimerHandlerAfterFuncAdd(b *testing.B) {
 		timer.AfterFunc(bt, func() {})
 	}
 }
-
