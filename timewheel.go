@@ -185,7 +185,7 @@ func (tw *TimeWheel) onTimer(i int) {
 	if elems == nil {
 		return
 	}
-	go func(elems *list.List, tw *TimeWheel, i int) {
+	/*go*/ func(elems *list.List, tw *TimeWheel, i int) {
 		e := elems.Front()
 		if e != nil {
 			for ; e != nil; e = e.Next() {
