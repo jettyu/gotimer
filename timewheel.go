@@ -58,40 +58,41 @@ type TimeWheel struct {
 	precisions []time.Duration
 	intervals  []int64
 	curIndexs  []int64
-	bucket_cnt int
+	bucketCnt  int
 	status     int32
 	offset     []int64
 	tickets    []time.Duration
-	pre_base   []int64
+	preBase    []int64
 	baseTime   time.Duration
 }
 
+//basetime is min precision.intervals the number of each bucket.
 func NewTimeWheel(basetime time.Duration, intervals []int64) *TimeWheel {
 	tw := &TimeWheel{}
 	tw.baseTime = basetime
-	tw.bucket_cnt = len(intervals)
+	tw.bucketCnt = len(intervals)
 	tw.intervals = intervals
 
-	tw.precisions = make([]time.Duration, tw.bucket_cnt)
-	tw.pre_base = make([]int64, tw.bucket_cnt)
-	tw.tickets = make([]time.Duration, tw.bucket_cnt)
+	tw.precisions = make([]time.Duration, tw.bucketCnt)
+	tw.preBase = make([]int64, tw.bucketCnt)
+	tw.tickets = make([]time.Duration, tw.bucketCnt)
 	tw.precisions[0] = basetime
-	for i := 0; i < tw.bucket_cnt; i++ {
+	for i := 0; i < tw.bucketCnt; i++ {
 
 		tw.precisions[i] = basetime
-		tw.pre_base[i] = 1
+		tw.preBase[i] = 1
 		for j := 0; j < i; j++ {
 			tw.precisions[i] *= time.Duration(tw.intervals[j])
-			tw.pre_base[i] *= tw.intervals[j]
+			tw.preBase[i] *= tw.intervals[j]
 		}
 		tw.tickets[i] = tw.precisions[i] * time.Duration(tw.intervals[i])
 	}
 
-	tw.curIndexs = make([]int64, tw.bucket_cnt)
-	tw.offset = make([]int64, tw.bucket_cnt)
+	tw.curIndexs = make([]int64, tw.bucketCnt)
+	tw.offset = make([]int64, tw.bucketCnt)
 
-	tw.tasks = make([][]TaskList, tw.bucket_cnt)
-	for i := 0; i < tw.bucket_cnt; i++ {
+	tw.tasks = make([][]TaskList, tw.bucketCnt)
+	for i := 0; i < tw.bucketCnt; i++ {
 		tw.tasks[i] = make([]TaskList, tw.intervals[i])
 	}
 	tw.start()
@@ -105,7 +106,7 @@ func (this *TimeWheel) After(d time.Duration) <-chan struct{} {
 		return ch
 	}
 	var i = 0
-	for i = 0; i < this.bucket_cnt-1; i++ {
+	for i = 0; i < this.bucketCnt-1; i++ {
 		if d < this.precisions[i+1] {
 			break
 		}
@@ -129,7 +130,7 @@ func (this *TimeWheel) After(d time.Duration) <-chan struct{} {
 
 	index := (atomic.LoadInt64(&this.curIndexs[i]) + interval - 1) % this.intervals[i]
 	ml := &this.tasks[i][index]
-	var c chan struct{} = nil
+	var c chan struct{}
 	if i != 0 {
 		var f func()
 		c, f = ml.AddChan(d)
@@ -156,7 +157,7 @@ func (this *TimeWheel) AfterFunc(d time.Duration, f func()) {
 		return
 	}
 	var i = 0
-	for i = 0; i < this.bucket_cnt-1; i++ {
+	for i = 0; i < this.bucketCnt-1; i++ {
 		if d < this.precisions[i+1] {
 			break
 		}
@@ -218,7 +219,7 @@ func (this *TimeWheel) start() {
 		for atomic.LoadInt32(&tw.status) == 0 {
 			select {
 			case <-tw.ticker.C:
-				for i := 0; i < this.bucket_cnt; i++ {
+				for i := 0; i < this.bucketCnt; i++ {
 					if tw.UpdateOffset(i) == 0 {
 						go tw.onTimer(i)
 					}
@@ -229,7 +230,7 @@ func (this *TimeWheel) start() {
 }
 
 func (this *TimeWheel) UpdateOffset(index int) int64 {
-	i := (this.offset[index] + 1) % int64(this.pre_base[index])
+	i := (this.offset[index] + 1) % int64(this.preBase[index])
 	atomic.StoreInt64(&this.offset[index], i)
 	return i
 }
