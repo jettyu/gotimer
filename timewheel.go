@@ -63,11 +63,12 @@ type TimeWheel struct {
 	offset     []int64
 	tickets    []time.Duration
 	pre_base   []int64
-	now        time.Duration
+	baseTime   time.Duration
 }
 
 func NewTimeWheel(basetime time.Duration, intervals []int64) *TimeWheel {
 	tw := &TimeWheel{}
+	tw.baseTime = basetime
 	tw.bucket_cnt = len(intervals)
 	tw.intervals = intervals
 
@@ -98,6 +99,11 @@ func NewTimeWheel(basetime time.Duration, intervals []int64) *TimeWheel {
 }
 
 func (this *TimeWheel) After(d time.Duration) <-chan struct{} {
+	if d < this.baseTime {
+		ch := make(chan struct{})
+		time.AfterFunc(d, func() { close(ch) })
+		return ch
+	}
 	var i = 0
 	for i = 0; i < this.bucket_cnt-1; i++ {
 		if d < this.precisions[i+1] {
@@ -145,6 +151,10 @@ func (this *TimeWheel) After(d time.Duration) <-chan struct{} {
 }
 
 func (this *TimeWheel) AfterFunc(d time.Duration, f func()) {
+	if d < this.baseTime {
+		time.AfterFunc(d, f)
+		return
+	}
 	var i = 0
 	for i = 0; i < this.bucket_cnt-1; i++ {
 		if d < this.precisions[i+1] {
