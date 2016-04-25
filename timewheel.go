@@ -177,8 +177,9 @@ func (this *TimeWheel) AfterFunc(d time.Duration, f func()) {
 }
 
 func (tw *TimeWheel) onTimer(i int) {
-	curIndex := tw.curIndexs[i]
-	atomic.StoreInt64(&tw.curIndexs[i], (curIndex+1)%tw.intervals[i])
+	curIndex := atomic.LoadInt64(&tw.curIndexs[i]) % tw.intervals[i]
+	atomic.AddInt64(&tw.curIndexs[i], 1)
+	//atomic.StoreInt64(&tw.curIndexs[i], (curIndex+1)%tw.intervals[i])
 
 	ml := &tw.tasks[i][curIndex]
 
