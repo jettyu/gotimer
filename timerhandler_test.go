@@ -49,7 +49,7 @@ func Benchmark_TimerHandlerAfter(b *testing.B) {
 func Benchmark_TimerHandlerAfterFuncAdd(b *testing.B) {
 	timer := NewTimer()
 	defer timer.Stop()
-	bt := GlobalPrecision * 2000
+	bt := DefaultPrecision * 2000
 	for i := 0; i < b.N; i++ {
 		timer.AfterFunc(bt, func() {})
 	}

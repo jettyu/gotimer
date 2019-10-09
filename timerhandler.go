@@ -9,24 +9,27 @@ import (
 //1hour = 3.60 * 100 * 100 * 100ms
 
 var (
-	ELEMENT_CNT_PER_BUCKET = []int64{256, 64, 64, 64, 64}
+	// ElementCntPerBucket ...
+	ElementCntPerBucket = []int64{256, 64, 64, 64, 64}
 )
 
+// Timer ...
 type Timer struct {
 	timerWheels *TimeWheel
 	baseTime    time.Duration
 }
 
-func (this *Timer) init() {
-	this.timerWheels = NewTimeWheel(this.baseTime, ELEMENT_CNT_PER_BUCKET)
+func (p *Timer) init() {
+	p.timerWheels = NewTimeWheel(p.baseTime, ElementCntPerBucket)
 }
 
+// NewTimer ...
 func NewTimer(baseTime ...time.Duration) *Timer {
 	var d time.Duration
 	if len(baseTime) > 0 {
 		d = baseTime[0]
 	} else {
-		d = GlobalPrecision
+		d = DefaultPrecision
 	}
 	th := &Timer{
 		baseTime: d,
@@ -35,14 +38,17 @@ func NewTimer(baseTime ...time.Duration) *Timer {
 	return th
 }
 
-func (this *Timer) AfterFunc(d time.Duration, task func()) {
-	this.timerWheels.AfterFunc(d, task)
+// AfterFunc ...
+func (p *Timer) AfterFunc(d time.Duration, task func()) {
+	p.timerWheels.AfterFunc(d, task)
 }
 
-func (this *Timer) After(d time.Duration) <-chan struct{} {
-	return this.timerWheels.After(d)
+// After ...
+func (p *Timer) After(d time.Duration) <-chan struct{} {
+	return p.timerWheels.After(d)
 }
 
-func (this *Timer) Stop() {
-	this.timerWheels.Stop()
+// Stop ...
+func (p *Timer) Stop() {
+	p.timerWheels.Stop()
 }

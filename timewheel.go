@@ -8,11 +8,13 @@ import (
 	"time"
 )
 
+// TaskNode ...
 type TaskNode struct {
 	activeTime time.Duration
 	task       func()
 }
 
+// TaskList ...
 type TaskList struct {
 	sync.Mutex
 	Elems    *list.List
@@ -21,6 +23,7 @@ type TaskList struct {
 	cmapLock sync.Mutex
 }
 
+// AddChan ...
 func (ml *TaskList) AddChan(d time.Duration) (c chan struct{}, f func()) {
 	var ok bool
 	ml.cmapLock.Lock()
@@ -42,6 +45,7 @@ func (ml *TaskList) AddChan(d time.Duration) (c chan struct{}, f func()) {
 	return c, f
 }
 
+// AddTask ...
 func (ml *TaskList) AddTask(d time.Duration, f func()) {
 	ml.Lock()
 	if ml.Elems == nil {
@@ -52,6 +56,7 @@ func (ml *TaskList) AddTask(d time.Duration, f func()) {
 	ml.Unlock()
 }
 
+// TimeWheel ...
 type TimeWheel struct {
 	ticker     *time.Ticker
 	tasks      [][]TaskList
@@ -66,7 +71,7 @@ type TimeWheel struct {
 	baseTime   time.Duration
 }
 
-//basetime is min precision.intervals the number of each bucket.
+// NewTimeWheel : basetime is min precision.intervals the number of each bucket.
 func NewTimeWheel(basetime time.Duration, intervals []int64) *TimeWheel {
 	tw := &TimeWheel{}
 	tw.baseTime = basetime
@@ -99,24 +104,25 @@ func NewTimeWheel(basetime time.Duration, intervals []int64) *TimeWheel {
 	return tw
 }
 
-func (this *TimeWheel) After(d time.Duration) <-chan struct{} {
-	if d < this.baseTime {
+// After ...
+func (p *TimeWheel) After(d time.Duration) <-chan struct{} {
+	if d < p.baseTime {
 		ch := make(chan struct{})
 		time.AfterFunc(d, func() { close(ch) })
 		return ch
 	}
 	var i = 0
-	for i = 0; i < this.bucketCnt-1; i++ {
-		if d < this.precisions[i+1] {
+	for i = 0; i < p.bucketCnt-1; i++ {
+		if d < p.precisions[i+1] {
 			break
 		}
 	}
-	d += time.Duration(atomic.LoadInt64(&this.offset[i])) * this.precisions[0]
-	d -= d % this.precisions[0]
-	interval := int64(d / this.precisions[i])
-	if interval > this.intervals[i] {
+	d += time.Duration(atomic.LoadInt64(&p.offset[i])) * p.precisions[0]
+	d -= d % p.precisions[0]
+	interval := int64(d / p.precisions[i])
+	if interval > p.intervals[i] {
 		panic(fmt.Errorf("TimeWheel wrong after time, interval=%d and aftertime=%d",
-			this.intervals[i]*int64(this.precisions[i]), d))
+			p.intervals[i]*int64(p.precisions[i]), d))
 	} else if interval == 0 && i == 0 {
 		c := make(chan struct{})
 		go func(c chan struct{}) {
@@ -128,8 +134,8 @@ func (this *TimeWheel) After(d time.Duration) <-chan struct{} {
 		return c
 	}
 
-	index := (atomic.LoadInt64(&this.curIndexs[i]) + interval - 1) % this.intervals[i]
-	ml := &this.tasks[i][index]
+	index := (atomic.LoadInt64(&p.curIndexs[i]) + interval - 1) % p.intervals[i]
+	ml := &p.tasks[i][index]
 	var c chan struct{}
 	if i != 0 {
 		var f func()
@@ -151,40 +157,41 @@ func (this *TimeWheel) After(d time.Duration) <-chan struct{} {
 	return c
 }
 
-func (this *TimeWheel) AfterFunc(d time.Duration, f func()) {
-	if d < this.baseTime {
+// AfterFunc ...
+func (p *TimeWheel) AfterFunc(d time.Duration, f func()) {
+	if d < p.baseTime {
 		time.AfterFunc(d, f)
 		return
 	}
 	var i = 0
-	for i = 0; i < this.bucketCnt-1; i++ {
-		if d < this.precisions[i+1] {
+	for i = 0; i < p.bucketCnt-1; i++ {
+		if d < p.precisions[i+1] {
 			break
 		}
 	}
-	d += time.Duration(atomic.LoadInt64(&this.offset[i])) * this.precisions[0]
-	interval := int64(d / this.precisions[i])
-	if interval > this.intervals[i] {
+	d += time.Duration(atomic.LoadInt64(&p.offset[i])) * p.precisions[0]
+	interval := int64(d / p.precisions[i])
+	if interval > p.intervals[i] {
 		panic(fmt.Errorf("TimeWheel wrong after time, interval=%d and aftertime=%d",
-			this.intervals[i]*int64(this.precisions[i]), d))
+			p.intervals[i]*int64(p.precisions[i]), d))
 	} else if interval == 0 && i == 0 {
 		go f()
 	}
 
-	index := (atomic.LoadInt64(&this.curIndexs[i]) + interval - 1) % this.intervals[i]
-	ml := &this.tasks[i][index]
+	index := (atomic.LoadInt64(&p.curIndexs[i]) + interval - 1) % p.intervals[i]
+	ml := &p.tasks[i][index]
 	ml.AddTask(d, f)
 }
 
-func (tw *TimeWheel) onTimer(i int) {
-	curIndex := atomic.LoadInt64(&tw.curIndexs[i]) % tw.intervals[i]
-	atomic.AddInt64(&tw.curIndexs[i], 1)
+func (p *TimeWheel) onTimer(i int) {
+	curIndex := atomic.LoadInt64(&p.curIndexs[i]) % p.intervals[i]
+	atomic.AddInt64(&p.curIndexs[i], 1)
 	//atomic.StoreInt64(&tw.curIndexs[i], (curIndex+1)%tw.intervals[i])
 
-	ml := &tw.tasks[i][curIndex]
+	ml := &p.tasks[i][curIndex]
 
 	var elems *list.List
-	var c chan struct{} = nil
+	var c chan struct{}
 	ml.Lock()
 	c = ml.c
 	ml.c = nil
@@ -211,31 +218,33 @@ func (tw *TimeWheel) onTimer(i int) {
 				}
 			}
 		}
-	}(elems, tw, i)
+	}(elems, p, i)
 }
-func (this *TimeWheel) start() {
+func (p *TimeWheel) start() {
 	go func(tw *TimeWheel) {
 		tw.ticker = time.NewTicker(tw.precisions[0])
 		defer tw.ticker.Stop()
 		for atomic.LoadInt32(&tw.status) == 0 {
 			select {
 			case <-tw.ticker.C:
-				for i := 0; i < this.bucketCnt; i++ {
+				for i := 0; i < p.bucketCnt; i++ {
 					if tw.UpdateOffset(i) == 0 {
 						go tw.onTimer(i)
 					}
 				}
 			}
 		}
-	}(this)
+	}(p)
 }
 
-func (this *TimeWheel) UpdateOffset(index int) int64 {
-	i := (this.offset[index] + 1) % int64(this.preBase[index])
-	atomic.StoreInt64(&this.offset[index], i)
+// UpdateOffset ...
+func (p *TimeWheel) UpdateOffset(index int) int64 {
+	i := (p.offset[index] + 1) % int64(p.preBase[index])
+	atomic.StoreInt64(&p.offset[index], i)
 	return i
 }
 
-func (this *TimeWheel) Stop() {
-	atomic.StoreInt32(&this.status, 1)
+// Stop ...
+func (p *TimeWheel) Stop() {
+	atomic.StoreInt32(&p.status, 1)
 }

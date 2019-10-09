@@ -7,7 +7,7 @@ import (
 )
 
 func Test_XTimerHandlerAfterFunc(t *testing.T) {
-	timer := NewXTimerHandler(GlobalPrecision, 10)
+	timer := NewXTimerHandler(DefaultPrecision, 10)
 	defer timer.Stop()
 	{
 		i := int32(0)
@@ -21,7 +21,7 @@ func Test_XTimerHandlerAfterFunc(t *testing.T) {
 }
 
 func Benchmark_XTimerHandlerAfterFunc(b *testing.B) {
-	timer := NewXTimerHandler(GlobalPrecision, 256)
+	timer := NewXTimerHandler(DefaultPrecision, 256)
 	defer timer.Stop()
 	for i := 0; i < b.N; i++ {
 		timer.AfterFunc(time.Second, func() {})
@@ -29,7 +29,7 @@ func Benchmark_XTimerHandlerAfterFunc(b *testing.B) {
 }
 
 func Benchmark_XTimerHandlerAfter(b *testing.B) {
-	timer := NewXTimerHandler(GlobalPrecision, 256)
+	timer := NewXTimerHandler(DefaultPrecision, 256)
 	defer timer.Stop()
 	for i := 0; i < b.N; i++ {
 		timer.After(time.Second)

@@ -5,12 +5,14 @@ import (
 	"time"
 )
 
+// XTimerHandler ...
 type XTimerHandler struct {
 	handers []*Timer
 	buckets int32
 	index   int32
 }
 
+// NewXTimerHandler ...
 func NewXTimerHandler(precision time.Duration, buckets int) *XTimerHandler {
 	xtw := &XTimerHandler{
 		handers: make([]*Timer, buckets),
@@ -22,18 +24,21 @@ func NewXTimerHandler(precision time.Duration, buckets int) *XTimerHandler {
 	return xtw
 }
 
-func (this *XTimerHandler) After(d time.Duration) <-chan struct{} {
-	index := atomic.AddInt32(&this.index, 1) % this.buckets
-	return this.handers[index].After(d)
+// After ...
+func (p *XTimerHandler) After(d time.Duration) <-chan struct{} {
+	index := atomic.AddInt32(&p.index, 1) % p.buckets
+	return p.handers[index].After(d)
 }
 
-func (this *XTimerHandler) AfterFunc(d time.Duration, task func()) {
-	index := atomic.AddInt32(&this.index, 1) % this.buckets
-	this.handers[index].AfterFunc(d, task)
+// AfterFunc ...
+func (p *XTimerHandler) AfterFunc(d time.Duration, task func()) {
+	index := atomic.AddInt32(&p.index, 1) % p.buckets
+	p.handers[index].AfterFunc(d, task)
 }
 
-func (this *XTimerHandler) Stop() {
-	for _, v := range this.handers {
+// Stop ...
+func (p *XTimerHandler) Stop() {
+	for _, v := range p.handers {
 		v.Stop()
 	}
 }

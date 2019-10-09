@@ -5,43 +5,50 @@ import (
 )
 
 var (
-	GlobalPrecision = time.Millisecond * 100
-	GlobalBaseMask  = 10
-	globalxtimer    = NewXTimerHandler(GlobalPrecision, GlobalBaseMask)
+	// DefaultPrecision ...
+	DefaultPrecision = time.Millisecond * 100
+	// DefaultBaseMask ...
+	DefaultBaseMask = 10
+	defaultXTimer   = NewXTimerHandler(DefaultPrecision, DefaultBaseMask)
 )
 
+// ResetPrecision ...
 func ResetPrecision(precision time.Duration, stop ...bool) {
-	GlobalPrecision = precision
-	oldxtimer := globalxtimer
-	globalxtimer = NewXTimerHandler(GlobalPrecision, GlobalBaseMask)
+	DefaultPrecision = precision
+	oldxtimer := defaultXTimer
+	defaultXTimer = NewXTimerHandler(DefaultPrecision, DefaultBaseMask)
 	if len(stop) > 0 && stop[0] {
 		oldxtimer.Stop()
 	}
 }
 
+// ResetMask ...
 func ResetMask(mask int, stop ...bool) {
-	GlobalBaseMask = mask
-	oldxtimer := globalxtimer
-	globalxtimer = NewXTimerHandler(GlobalPrecision, GlobalBaseMask)
+	DefaultBaseMask = mask
+	oldxtimer := defaultXTimer
+	defaultXTimer = NewXTimerHandler(DefaultPrecision, DefaultBaseMask)
 	if len(stop) > 0 && stop[0] {
 		oldxtimer.Stop()
 	}
 }
 
+// ResetPrecisionAndMask ...
 func ResetPrecisionAndMask(precision time.Duration, mask int, stop ...bool) {
-	GlobalPrecision = precision
-	GlobalBaseMask = mask
-	oldxtimer := globalxtimer
-	globalxtimer = NewXTimerHandler(GlobalPrecision, GlobalBaseMask)
+	DefaultPrecision = precision
+	DefaultBaseMask = mask
+	oldxtimer := defaultXTimer
+	defaultXTimer = NewXTimerHandler(DefaultPrecision, DefaultBaseMask)
 	if len(stop) > 0 && stop[0] {
 		oldxtimer.Stop()
 	}
 }
 
+// After ...
 func After(d time.Duration) <-chan struct{} {
-	return globalxtimer.After(d)
+	return defaultXTimer.After(d)
 }
 
+// AfterFunc ...
 func AfterFunc(d time.Duration, f func()) {
-	globalxtimer.AfterFunc(d, f)
+	defaultXTimer.AfterFunc(d, f)
 }
